@@ -1,0 +1,30 @@
+From 1e56dd1e7285d3026092ba794078edb290b4c1b1 Mon Sep 17 00:00:00 2001
+From: Ondrej Dubaj <odubaj@redhat.com>
+Date: Mon, 15 Mar 2021 13:06:35 +0100
+Subject: [PATCH] fixed isues found by covscan
+
+---
+ contrib/minizip/mztools.c | 8 ++++++++
+ contrib/minizip/zip.c     | 4 ++--
+ deflate.c                 | 5 +++--
+ 3 files changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/contrib/minizip/mztools.c b/contrib/minizip/mztools.c
+index 96891c2..1197928 100644
+--- a/contrib/minizip/mztools.c
++++ b/contrib/minizip/mztools.c
+@@ -286,6 +286,14 @@ uLong* bytesRecovered;
+     }
+   } else {
+     err = Z_STREAM_ERROR;
++    if(fpZip != NULL)
++      fclose(fpZip);
++
++    if(fpOut != NULL)
++      fclose(fpOut);
++
++    if(fpOutCD != NULL)
++      fclose(fpOutCD);
+   }
+   return err;
+ }

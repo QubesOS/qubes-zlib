@@ -1,0 +1,23 @@
+From f776e1609cc63bf486634ee9bc6226dac2c0d2f3 Mon Sep 17 00:00:00 2001
+From: Ondrej Dubaj <odubaj@redhat.com>
+Date: Tue, 15 Oct 2019 11:27:15 +0200
+Subject: [PATCH] fixed covscan issues
+
+---
+ deflate.c         | 2 +-
+ test/crc32_test.c | 8 ++++----
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/deflate.c b/deflate.c
+index 089285a..9b09718 100644
+--- a/deflate.c
++++ b/deflate.c
+@@ -1015,7 +1015,7 @@ int ZEXPORT deflate (strm, flush)
+      */
+     if (strm->avail_in != 0 || s->lookahead != 0 ||
+         (flush != Z_NO_FLUSH && s->status != FINISH_STATE)) {
+-        block_state bstate;
++        block_state bstate = 0;
+ 
+         bstate = DEFLATE_HOOK(strm, flush, &bstate) ? bstate :
+                  s->level == 0 ? deflate_stored(s, flush) :
