@@ -1,0 +1,184 @@
+%bcond_without minizip
+
+Name:    zlib
+Version: @VERSION@
+Release: @REL@%{?dist}
+Summary: Compression and decompression library
+# /contrib/dotzlib/ have Boost license
+License: zlib and Boost
+URL: https://www.zlib.net/
+
+Source: https://www.zlib.net/zlib-%{version}.tar.xz
+# https://github.com/madler/zlib/pull/210
+Patch0: zlib-1.2.5-minizip-fixuncrypt.patch
+# resolves: #805113
+Patch1: zlib-1.2.11-optimized-s390.patch
+# IBM Z hardware-accelerated deflate
+# ref: https://github.com/madler/zlib/pull/410
+Patch18: zlib-@VERSION@-IBM-Z-hw-accelerated-deflate.patch
+# IBM optimized crc32 for Power 8+ processors
+# ref: https://github.com/madler/zlib/pull/478
+Patch19: zlib-@VERSION@-power-optimizations.patch
+# Patch for s390x crc32vx
+# ref: https://github.com/iii-i/zlib/releases/tag/crc32vx-v3
+Patch20: zlib-@VERSION@-s390x-vectorize-crc32.patch
+# Fix for configure
+# ref: https://github.com/madler/zlib/pull/607/commits/80d086357a55b94a13e43756cf3e131f25eef0e4
+Patch21: zlib-@VERSION@-fix-configure.patch
+# fixed covscan issues
+Patch22: zlib-1.2.11-covscan-issues.patch
+# fixed issues found by covscan for rhel-9
+# ref: https://github.com/madler/zlib/pull/554
+Patch23: zlib-1.2.11-covscan-issues-rhel9.patch
+# Correct incorrect inputs provided to the CRC functions.
+# ref: https://github.com/madler/zlib/commit/ec3df00224d4b396e2ac6586ab5d25f673caa4c2
+Patch24: zlib-@VERSION@-correct-inputs-provided-to-crc-func.patch
+# Fix for CVE-2022-37434
+# ref: https://github.com/madler/zlib/commit/1eb7682f845ac9e9bf9ae35bbfb3bad5dacbd91d
+Patch25: zlib-@VERSION@-fix-CVE-2022-37434.patch
+
+BuildRequires: make
+BuildRequires: automake, autoconf, libtool
+
+%global __provides_exclude_from ^%{_libdir}/pkgconfig/minizip\\.pc$
+
+%description
+Zlib is a general-purpose, patent-free, lossless data compression
+library which is used by many different programs.
+
+
+%package devel
+Summary: Header files and libraries for Zlib development
+Requires: %{name}%{?_isa} = %{version}-%{release}
+
+%description devel
+The zlib-devel package contains the header files and libraries needed
+to develop programs that use the zlib compression and decompression
+library.
+
+
+%package static
+Summary: Static libraries for Zlib development
+Requires: %{name}-devel%{?_isa} = %{version}-%{release}
+
+%description static
+The zlib-static package includes static libraries needed
+to develop programs that use the zlib compression and
+decompression library.
+
+
+%if %{with minizip}
+%package -n minizip-compat
+Summary: Library for manipulation with .zip archives
+Requires: %{name}%{?_isa} = %{version}-%{release}
+
+%description -n minizip-compat
+Minizip is a library for manipulation with files from .zip archives.
+
+
+%package -n minizip-compat-devel
+Summary: Development files for the minizip library
+Requires: minizip-compat%{?_isa} = %{version}-%{release}
+Requires: %{name}-devel%{?_isa} = %{version}-%{release}
+Conflicts: minizip-devel
+
+%description -n minizip-compat-devel
+This package contains the libraries and header files needed for
+developing applications which use minizip.
+%endif
+
+
+%prep
+%setup -q
+%patch0 -p1 -b .fixuncrypt
+%patch18 -p1
+%patch19 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
+%patch23 -p1
+%patch24 -p1
+%patch25 -p1
+# Patch19 conflicts with Patch1, so the Patch1 has to be applied after,
+# because it is arch specific
+%ifarch s390 s390x
+%patch1 -p1 -b .optimized-deflate
+%endif
+
+
+iconv -f iso-8859-2 -t utf-8 < ChangeLog > ChangeLog.tmp
+mv ChangeLog.tmp ChangeLog
+
+
+%build
+export CFLAGS="$RPM_OPT_FLAGS"
+
+export LDFLAGS="$LDFLAGS -Wl,-z,relro -Wl,-z,now"
+# no-autotools, %%configure is not compatible
+%ifarch s390 s390x
+  ./configure --libdir=%{_libdir} --includedir=%{_includedir} --prefix=%{_prefix} --dfltcc
+%else
+  ./configure --libdir=%{_libdir} --includedir=%{_includedir} --prefix=%{_prefix}
+%endif
+%make_build
+
+%if %{with minizip}
+cd contrib/minizip
+autoreconf --install
+%configure --enable-static=no
+%make_build
+%endif
+
+
+%check
+make test
+
+
+%install
+%make_install
+
+%if %{with minizip}
+%make_install -C contrib/minizip
+# https://github.com/madler/zlib/pull/229
+rm $RPM_BUILD_ROOT%_includedir/minizip/crypt.h
+%endif
+
+find $RPM_BUILD_ROOT -name '*.la' -delete
+
+
+%files
+%license README
+%doc ChangeLog FAQ
+%{_libdir}/libz.so.*
+
+
+%files devel
+%doc doc/algorithm.txt test/example.c
+%{_libdir}/libz.so
+%{_libdir}/pkgconfig/zlib.pc
+%{_includedir}/zlib.h
+%{_includedir}/zconf.h
+%{_mandir}/man3/zlib.3*
+
+
+%files static
+%license README
+%{_libdir}/libz.a
+
+
+%if %{with minizip}
+%files -n minizip-compat
+%doc contrib/minizip/MiniZip64_info.txt contrib/minizip/MiniZip64_Changes.txt
+%{_libdir}/libminizip.so.*
+
+
+%files -n minizip-compat-devel
+%dir %{_includedir}/minizip
+%{_includedir}/minizip/*.h
+%{_libdir}/libminizip.so
+%{_libdir}/pkgconfig/minizip.pc
+%endif
+
+
+%changelog
+@CHANGELOG@

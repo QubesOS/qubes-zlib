@@ -1,0 +1,8 @@
+host:
+  rpm:
+    build:
+    - zlib.spec
+source:
+  files:
+  - url: https://www.zlib.net/zlib-@VERSION@.tar.xz
+    sha512: zlib-@VERSION@.tar.xz.sha512
